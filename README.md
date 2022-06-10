@@ -45,7 +45,7 @@ Here is a basic example of the color picker width the default configuration:
 You can manually import images into the picker two different ways.
 
 ```javascript
-picker.value = "<url">; // Url can also be a blob or data url
+picker.value = "<url>"; // Url can also be a blob or data url
 picker.import(url); // Same here
 ```
 
