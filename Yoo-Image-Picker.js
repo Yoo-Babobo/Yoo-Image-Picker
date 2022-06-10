@@ -89,7 +89,7 @@ class YooImagePickerElement extends HTMLElement {
             if (item.type === "text/html") {
                 prevent(event);
 
-                const url = event.clipboardData.getData("text/html").replace(/\n+/g, "").replace(/<\/?body(.*)>|<\/?html(.*)>/g, "").replace(/(.*)<img(.*)src=("|')(.*?)("|')(.*)>(.*)/, "$4");
+                const url = event.clipboardData.getData("text/html").replace(/\n+/g, "").replace(/<\/?body(.*)>|<\/?html(.*)>/g, "").replace(/(.*)<img(.*)src=('|")(.*?)('|")(.*)>(.*)/, "$4");
                 
                 this.import(url).then(() => URL.revokeObjectURL(url));
 
