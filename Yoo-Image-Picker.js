@@ -35,7 +35,7 @@ class YooImagePickerElement extends HTMLElement {
             width: 256,
             height: 256,
             background: "transparent",
-            componentWidth: 300,
+            elementWidth: 300,
             error: () => console.log("Incorrect file type"),
             canPaste: false
         };
@@ -520,7 +520,7 @@ class YooImagePickerElement extends HTMLElement {
         config.height = data.height || config.height;
 
         config.background = data.background || config.background;
-        config.componentWidth = data.componentWidth || config.componentWidth;
+        config.elementWidth = data.elementWidth || config.elementWidth;
 
         config.error = data.error || config.error;
         config.canPaste = data.canPaste || config.canPaste;
@@ -561,11 +561,11 @@ class YooImagePickerElement extends HTMLElement {
         if (config.zoom || config.rotate || filter.blur || filter.brightness || filter.contrast || filter.grayscale || filter.hue || filter.invert || filter.opacity || filter.saturation || filter.sepia) this._elements.reset.classList.add("active");
         else this._elements.reset.classList.remove("active");
 
-        const { width, height, background, componentWidth } = config;
+        const { width, height, background, elementWidth } = config;
         this.canvas.width = width;
         this.canvas.height = height;
         this.canvas.style.background = background;
-        this.style.width = componentWidth + "px";
+        this.style.width = elementWidth + "px";
 
         this.render();
     }
