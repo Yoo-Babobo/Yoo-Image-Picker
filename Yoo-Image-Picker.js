@@ -125,14 +125,14 @@ class YooImagePickerElement extends HTMLElement {
         
         {
             const style = document.createElement("style");
-            style.textContent = "yoo-image-picker { display: inline-block; background: var(--yoo-image-editor-background, #343434); max-width: 100%; margin: 20px; padding: 15px; border-radius: 20px; }";
+            style.textContent = "yoo-image-picker { display: inline-block; background: var(--yoo-image-picker-background, #343434); max-width: 100%; margin: 20px; padding: 15px; border-radius: 20px; }";
             document.head.append(style);
         }
 
         const shadow = this.attachShadow({ mode: "open" });
 
         const style = document.createElement("style");
-        style.textContent = "* { color: var(--yoo-image-editor-foreground, #cbcbcb); font-family: var(--yoo-image-editor-font, Arial); text-align: center; user-select: none; } canvas { display: block; max-width: 100%; height: auto; margin-left: 50%; border-radius: 10px; border: 4px dashed transparent; transition: border .3s ease; cursor: pointer; transform: translateX(-50%); } canvas.highlighted { border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb) } input, small { display: inline; margin: 5px; } button, input { cursor: pointer; } button { background: var(--yoo-image-editor-background, #343434); margin: 10px; margin-left: 50%; padding: 10px; border: 2px solid var(--yoo-image-editor-foreground, #cbcbcb); border-radius: 10px; transform: translateX(-50%); } a { text-decoration: none } a:hover { text-decoration: underline; } small { display: block; } #logo { width: 16px; vertical-align: bottom; } .wrapper { display: none; } .wrapper.active { display: block; } ";
+        style.textContent = "* { color: var(--yoo-image-picker-foreground, #cbcbcb); font-family: var(--yoo-image-picker-font, Arial); text-align: center; user-select: none; } canvas { display: block; max-width: 100%; height: auto; margin-left: 50%; border-radius: 10px; border: 4px dashed transparent; transition: border .3s ease; cursor: pointer; transform: translateX(-50%); } canvas.highlighted { border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb) } input, small { display: inline; margin: 5px; } button, input { cursor: pointer; } button { background: var(--yoo-image-picker-background, #343434); margin: 10px; margin-left: 50%; padding: 10px; border: 2px solid var(--yoo-image-picker-foreground, #cbcbcb); border-radius: 10px; transform: translateX(-50%); } a { text-decoration: none } a:hover { text-decoration: underline; } small { display: block; } #logo { width: 16px; vertical-align: bottom; } .wrapper { display: none; } .wrapper.active { display: block; } ";
         shadow.append(style);
 
         {
