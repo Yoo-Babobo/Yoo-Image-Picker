@@ -70,3 +70,15 @@ picker.config({
     }
 });
 ```
+
+## Themes
+
+You can easily customize the theme of the element by setting certain CSS variables.
+
+```css
+:root {
+    --yoo-image-picker-background: #343434;
+    --yoo-image-picker-foreground: #cbcbcb;
+    --yoo-image-picker-font: Arial;
+}
+```
