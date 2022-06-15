@@ -27,6 +27,7 @@ class YooImagePickerElement extends HTMLElement {
         this._config = {
             zoom: false,
             rotate: false,
+            pixelate: false,
             filter: {
                 blur: false,
                 brightness: false,
@@ -50,6 +51,7 @@ class YooImagePickerElement extends HTMLElement {
         this._wrappers = {
             zoom: null,
             rotate: null,
+            pixelate: null,
             blur: null,
             brightness: null,
             contrast: null,
@@ -64,6 +66,7 @@ class YooImagePickerElement extends HTMLElement {
         this._elements = {
             zoom: null,
             rotate: null,
+            pixelate: null,
             blur: null,
             brightness: null,
             contrast: null,
@@ -77,24 +80,28 @@ class YooImagePickerElement extends HTMLElement {
         };
 
         this.image = null;
+        
+        this.offscreen_canvas = new OffscreenCanvas(this._config.width, this._config.height);
+        this.offscreen_context = this.offscreen_canvas.getContext("2d");
     }
 
     connectedCallback() {
         document.addEventListener("paste", event => {
             if (this._config.canPaste === false || (this._config.canPaste instanceof Function && this._config.canPaste() === false)) return;
-
-            const item = event.clipboardData.items[0];
-            const type = item.type.split("/")[0];
+            
+            const clipboard = event.clipboardData;
+            const item = clipboard.items[0];
             
             if (item.type === "text/html") {
                 prevent(event);
-
-                const url = event.clipboardData.getData("text/html").replace(/\n+/g, "").replace(/<\/?body(.*)>|<\/?html(.*)>/g, "").replace(/(.*)<img(.*)src=('|")(.*?)('|")(.*)>(.*)/, "$4");
                 
-                this.import(url).then(() => URL.revokeObjectURL(url));
+                const html = clipboard.getData("text/html");
+                const url = html && html.match(/\bsrc="?([^"\s]+)"?\s*/)[1];
+                
+                if (url) this.import(url);
 
                 return;
-            } else if (type !== "image") return this._config.error();
+            } else if (!item.type.startsWith("image")) return this._config.error();
 
             prevent(event);
 
@@ -126,13 +133,27 @@ class YooImagePickerElement extends HTMLElement {
         this.addEventListener("drop", event => {
             prevent(event);
             drag_leave(event);
-
+            
             const dataTransfer = event.dataTransfer;
-            const file = dataTransfer.files[0];
-            const type = file.type.split("/")[0];
+            const items = dataTransfer.items;
+            let item = null;
+            
+            for (let i of Object.values(items)) {
+                if (i.type === "text/html") {
+                    const html = dataTransfer.getData("text/html");
+                    const matches = html && html.match(/\bsrc="?([^"\s]+)"?\s*/);
+                    const url = matches instanceof Array && matches[1];
+                    
+                    if (url) this.import(url);
+                    else this._config.error();
+                    
+                    return;
+                } else if (i.type.startsWith("image")) item = i;
+            }
+            
+            if (!item) return this._config.error();
 
-            if (type !== "image") return this._config.error();
-
+            const file = item.getAsFile();
             const url = URL.createObjectURL(file);
 
             this.import(url).then(() => URL.revokeObjectURL(url));
@@ -166,6 +187,9 @@ class YooImagePickerElement extends HTMLElement {
             const input = document.createElement("input");
             input.type = "file";
             input.accept = "image/*";
+            input.hidden = true;
+            
+            document.body.appendChild(input);
 
             input.addEventListener("input", () => {
                 const file = input.files[0];
@@ -233,6 +257,29 @@ class YooImagePickerElement extends HTMLElement {
             input.title = "Rotate";
             input.ariaLabel = "Rotate";
             elements.rotate = input;
+
+            wrapper.append(span, input);
+
+            input.addEventListener("input", render);
+        }
+
+        {
+            const wrapper = document.createElement("p");
+            wrapper.classList.add("wrapper");
+            wrappers.pixelate = wrapper;
+            shadow.append(wrapper);
+
+            const span = document.createElement("span");
+            span.textContent = "Pixelate ";
+
+            const input = document.createElement("input");
+            input.type = "range";
+            input.min = 0;
+            input.value = 0;
+            input.max = 180;
+            input.title = "Pixelate";
+            input.ariaLabel = "Pixelate";
+            elements.pixelate = input;
 
             wrapper.append(span, input);
 
@@ -469,12 +516,14 @@ class YooImagePickerElement extends HTMLElement {
     }
 
     config(data = {}) {
+        const canvas = this.canvas;
         const config = this._config;
         const filter = config.filter;
         const wrappers = this._wrappers;
 
         config.zoom = data.zoom || config.zoom;
         config.rotate = data.rotate || config.rotate;
+        config.pixelate = data.pixelate || config.pixelate;
 
         filter.blur = data.blur || filter.blur;
         filter.brightness = data.brightness || filter.brightness;
@@ -501,6 +550,9 @@ class YooImagePickerElement extends HTMLElement {
         
         if (config.rotate) wrappers.rotate.classList.add("active");
         else wrappers.rotate.classList.remove("active");
+
+        if (config.pixelate) wrappers.pixelate.classList.add("active");
+        else wrappers.pixelate.classList.remove("active");
 
         if (filter.blur) wrappers.blur.classList.add("active");
         else wrappers.blur.classList.remove("active");
@@ -529,13 +581,13 @@ class YooImagePickerElement extends HTMLElement {
         if (filter.sepia) wrappers.sepia.classList.add("active");
         else wrappers.sepia.classList.remove("active");
 
-        if (config.zoom || config.rotate || filter.blur || filter.brightness || filter.contrast || filter.grayscale || filter.hue || filter.invert || filter.opacity || filter.saturation || filter.sepia) this._elements.reset.classList.add("active");
+        if (config.zoom || config.rotate || config.pixelate || filter.blur || filter.brightness || filter.contrast || filter.grayscale || filter.hue || filter.invert || filter.opacity || filter.saturation || filter.sepia) this._elements.reset.classList.add("active");
         else this._elements.reset.classList.remove("active");
 
         const { width, height, background, elementWidth } = config;
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.canvas.style.background = background;
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.background = background;
         this.style.width = elementWidth + "px";
 
         this.render();
@@ -543,30 +595,56 @@ class YooImagePickerElement extends HTMLElement {
         return this;
     }
 
-    import(url) {
+    async import(url) {
         if (!url) return;
 
-        const image = document.createElement("img");
-        this.image = image;
+        try {
+            url = await (() => new Promise(async resolve => {
+                const data = await fetch(url);
+                const blob = await data.blob();
+            
+                const reader = new FileReader();
+            
+                reader.addEventListener("load", () => resolve(reader.result));
 
-        image.src = url;
+                reader.readAsDataURL(blob);
+            }))();
 
-        return new Promise((resolve, reject) => {
-            try {
-                image.addEventListener("load", () => {
-                    if (this._config.autoSize) {
-                        this.config({
-                            width: image.width,
-                            height: image.height
-                        });
-                    }
+            const image = document.createElement("img");
+            this.image = image;
+            
+            image.src = url;
 
-                    this.render();
+            return new Promise((resolve, reject) => {
+                try {
+                    image.addEventListener("load", () => {
+                        const width = image.width;
+                        const height = image.height;
 
-                    resolve();
-                });
-            } catch (error) { reject(error); }
-        });
+                        if (this._config.autoSize) {
+                            this.config({
+                                width,
+                                height
+                            });
+                        }
+
+                        this.offscreen_canvas.width = width;
+                        this.offscreen_canvas.height = height;
+
+                        this.render();
+
+                        resolve();
+                    });
+                } catch (error) {
+                    console.error(error());
+                    this.config._error();
+                    reject(error);
+                }
+            });
+        } catch (error) {
+            console.error(error);
+            this.config._error();
+        }
     }
 
     reset(animation = true) {
@@ -576,6 +654,7 @@ class YooImagePickerElement extends HTMLElement {
         if (!animation) {
             elements.zoom.value = 100;
             elements.rotate.value = 0;
+            elements.pixelate.value = 0;
             elements.blur.value = 0;
             elements.brightness.value = 100;
             elements.contrast.value = 100;
@@ -624,6 +703,7 @@ class YooImagePickerElement extends HTMLElement {
 
         animate(elements.zoom, 100);
         animate(elements.rotate, 0);
+        animate(elements.pixelate, 0);
         animate(elements.blur, 0);
         animate(elements.brightness, 100);
         animate(elements.contrast, 100);
@@ -638,21 +718,29 @@ class YooImagePickerElement extends HTMLElement {
     }
 
     clear() {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const { canvas, context, offscreen_canvas, offscreen_context, _config } = this;
+        const background = _config.background;
 
-        if (innerWidth < 450 && this._config.background === "transparent") {
-            this.context.fillStyle = "black";
-            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        offscreen_context.clearRect(0, 0, offscreen_canvas.width, offscreen_canvas.height);
+
+        if (innerWidth < 450 && background === "transparent") {
+            context.fillStyle = "black";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            offscreen_context.fillStyle = "black";
+            offscreen_context.fillRect(0, 0, offscreen_canvas.width, offscreen_canvas.height);
         } else {
-            this.context.fillStyle = this._config.background;
-            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            context.fillStyle = background;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            offscreen_context.fillStyle = background;
+            offscreen_context.fillRect(0, 0, offscreen_canvas.width, offscreen_canvas.height);
         }
 
         return this;
     }
 
     render() {
-        const { canvas, context } = this;
+        const { canvas, context, offscreen_canvas, offscreen_context } = this;
         const { width, height } = canvas;
         const elements = this._elements;
         const image = this.image || false;
@@ -661,17 +749,17 @@ class YooImagePickerElement extends HTMLElement {
 
         if (!image) return this;
         
-        const width_ratio = width / image.width;
-        const height_ratio = height / image.height;
+        const width_ratio = width / offscreen_canvas.width;
+        const height_ratio = height / offscreen_canvas.height;
         const ratio = Math.min(width_ratio, height_ratio);
         
-        const x = (width - image.width * ratio) / 2;
-        const y = (height - image.height * ratio) / 2;
-
-        context.save();
+        const x = (width - offscreen_canvas.width * ratio) / 2;
+        const y = (height - offscreen_canvas.height * ratio) / 2;
 
         const zoom = Number(elements.zoom.value) / 100;
         const rotate = Number(elements.rotate.value) / 180 * Math.PI;
+        let pixelate = Number(elements.pixelate.value);
+        pixelate = pixelate < 5 ? false : pixelate;
         const blur = Number(elements.blur.value) / 10;
         const brightness = Number(elements.brightness.value);
         const contrast = Number(elements.contrast.value);
@@ -681,6 +769,24 @@ class YooImagePickerElement extends HTMLElement {
         const opacity = Number(elements.opacity.value) / 100;
         const saturation = Number(elements.saturation.value);
         const sepia = Number(elements.sepia.value);
+        
+        offscreen_context.drawImage(image, 0, 0);
+
+        if (pixelate) {
+            const pixels = offscreen_context.getImageData(0, 0, offscreen_canvas.width, offscreen_canvas.height).data;
+
+            this.clear();
+
+            for (let y = 0; y < offscreen_canvas.height; y += pixelate) {
+                for (let x = 0; x < offscreen_canvas.width; x += pixelate) {
+                    const pixel = (x + y * offscreen_canvas.width) * 4;
+                    offscreen_context.fillStyle = `rgba(${pixels[pixel]}, ${pixels[pixel + 1]}, ${pixels[pixel + 2]}, ${pixels[pixel + 3]}`;
+                    offscreen_context.fillRect(x, y, pixelate, pixelate);
+                }
+            }
+        }
+
+        context.save();
 
         context.translate(width / 2, height / 2);
         
@@ -691,7 +797,7 @@ class YooImagePickerElement extends HTMLElement {
 
         context.translate(-width / 2, -height / 2);
 
-        context.drawImage(image, 0, 0, image.width, image.height, x, y, image.width * ratio, image.height * ratio);
+        context.drawImage(offscreen_canvas, 0, 0, offscreen_canvas.width, offscreen_canvas.height, x, y, offscreen_canvas.width * ratio, offscreen_canvas.height * ratio);
 
         context.restore();
 
