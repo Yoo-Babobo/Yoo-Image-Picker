@@ -15,6 +15,7 @@ Here is a basic example of the color picker width the default configuration:
     picker.config({ // Configure the image picker
         zoom: false,
         rotate: false,
+        pixelate: false,
     
         // Image filters    
     
