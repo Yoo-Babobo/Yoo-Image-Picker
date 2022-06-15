@@ -80,9 +80,6 @@ class YooImagePickerElement extends HTMLElement {
         };
 
         this.image = null;
-        
-        this.offscreen_canvas = new OffscreenCanvas(this._config.width, this._config.height);
-        this.offscreen_context = this.offscreen_canvas.getContext("2d");
     }
 
     connectedCallback() {
@@ -168,7 +165,7 @@ class YooImagePickerElement extends HTMLElement {
         const shadow = this.attachShadow({ mode: "open" });
 
         const style = document.createElement("style");
-        style.textContent = "* { color: var(--yoo-image-picker-foreground, #cbcbcb); font-family: var(--yoo-image-picker-font, Arial); text-align: center; user-select: none; } canvas { display: block; max-width: 100%; height: auto; margin-left: 50%; border-radius: 10px; border: 4px dashed transparent; box-shadow: rgba(0, 0, 0, .35) 0 5px 15px; transition: border .3s ease; cursor: pointer; transform: translateX(-50%); } canvas.highlighted { border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb) } input, small { display: inline; margin: 5px; } button, input { cursor: pointer; } button { background: var(--yoo-image-picker-background, #343434); margin: 10px; margin-left: 50%; padding: 10px; border: 2px solid var(--yoo-image-picker-foreground, #cbcbcb); border-radius: 10px; transform: translateX(-50%); } a { text-decoration: none } a:hover { text-decoration: underline; } small { display: block; } #logo { width: 16px; vertical-align: bottom; } .wrapper { display: none; } .wrapper.active { display: block; } ";
+        style.textContent = "* { color: var(--yoo-image-picker-foreground, #cbcbcb); font-family: var(--yoo-image-picker-font, Arial); text-align: center; user-select: none; } input[type=range], small { display: inline; margin: 5px; } button, input { cursor: pointer; } button { background: var(--yoo-image-picker-background, #343434); margin: 10px; margin-left: 50%; padding: 10px; border: 2px solid var(--yoo-image-picker-foreground, #cbcbcb); border-radius: 10px; transform: translateX(-50%); } a { text-decoration: none } a:hover { text-decoration: underline; } small { display: block; } #canvas { display: block; max-width: 100%; height: auto; margin-left: 50%; border-radius: 10px; border: 4px dashed transparent; box-shadow: rgba(0, 0, 0, .35) 0 5px 15px; transition: border .3s ease; cursor: pointer; transform: translateX(-50%); } #canvas.highlighted { border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb); } #logo { width: 16px; vertical-align: bottom; } .wrapper { display: none; } .wrapper.active { display: block; } ";
         shadow.append(style);
 
         {
@@ -178,10 +175,19 @@ class YooImagePickerElement extends HTMLElement {
         }
 
         const canvas = document.createElement("canvas");
+        canvas.id = "canvas";
         canvas.title = "Click to upload an image, drag and drop, or paste.";
         canvas.ariaLabel = "Click to upload an image, drag and drop, or paste.";
         this.canvas = canvas;
         shadow.append(canvas);
+        
+        {
+            const canvas = document.createElement("canvas");
+            canvas.hidden = true;
+            this.offscreen_canvas = canvas;
+            
+            shadow.append(canvas);
+        }
 
         const click = () => {
             const input = document.createElement("input");
@@ -189,7 +195,7 @@ class YooImagePickerElement extends HTMLElement {
             input.accept = "image/*";
             input.hidden = true;
             
-            document.body.appendChild(input);
+            shadow.append(input);
 
             input.addEventListener("input", () => {
                 const file = input.files[0];
@@ -211,6 +217,7 @@ class YooImagePickerElement extends HTMLElement {
         canvas.addEventListener("touchdown", click);
 
         this.context = canvas.getContext("2d");
+        this.offscreen_context = this.offscreen_canvas.getContext("2d");
 
         const wrappers = this._wrappers;
         const elements = this._elements;
@@ -656,18 +663,18 @@ class YooImagePickerElement extends HTMLElement {
         const time = .33 * 60;
 
         if (!animation) {
-            elements.zoom.value = 100;
-            elements.rotate.value = 0;
-            elements.pixelate.value = 0;
-            elements.blur.value = 0;
-            elements.brightness.value = 100;
-            elements.contrast.value = 100;
-            elements.grayscale.value = 0;
-            elements.hue.value = 0;
-            elements.invert.value = 0;
-            elements.opacity.value = 100;
-            elements.saturation.value = 100;
-            elements.sepia.value = 0;
+            elements.zoom && (elements.zoom.value = 100);
+            elements.rotate && (elements.rotate.value = 0);
+            elements.pixelate && (elements.pixelate.value = 0);
+            elements.blur && (elements.blur.value = 0);
+            elements.brightness && (elements.brightness.value = 100);
+            elements.contrast && (elements.contrast.value = 100);
+            elements.grayscale && (elements.grayscale.value = 0);
+            elements.hue && (elements.hue.value = 0);
+            elements.invert && (elements.invert.value = 0);
+            elements.opacity && (elements.opacity.value = 100);
+            elements.saturation && (elements.saturation.value = 100);
+            elements.sepia && (elements.sepia.value = 0);
 
             this.render();
 
@@ -675,6 +682,8 @@ class YooImagePickerElement extends HTMLElement {
         }
 
         const animate = async (element, finish) => {
+            if (!(element instanceof HTMLElement)) return;
+
             const start = element.value;
             const offset = Math.max(start, finish) - Math.min(start, finish);
             const step = offset / time;
