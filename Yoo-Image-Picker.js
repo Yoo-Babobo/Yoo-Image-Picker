@@ -628,8 +628,12 @@ class YooImagePickerElement extends HTMLElement {
                             });
                         }
 
-                        this.offscreen_canvas.width = width;
-                        this.offscreen_canvas.height = height;
+                        const width_ratio = this.canvas.width / width;
+                        const height_ratio = this.canvas.height / height;
+                        const ratio = Math.min(width_ratio, height_ratio);
+
+                        this.offscreen_canvas.width = width * ratio;
+                        this.offscreen_canvas.height = height * ratio;
 
                         this.render();
 
@@ -749,12 +753,8 @@ class YooImagePickerElement extends HTMLElement {
 
         if (!image) return this;
         
-        const width_ratio = width / offscreen_canvas.width;
-        const height_ratio = height / offscreen_canvas.height;
-        const ratio = Math.min(width_ratio, height_ratio);
-        
-        const x = (width - offscreen_canvas.width * ratio) / 2;
-        const y = (height - offscreen_canvas.height * ratio) / 2;
+        const x = (width - offscreen_canvas.width) / 2;
+        const y = (height - offscreen_canvas.height) / 2;
 
         const zoom = Number(elements.zoom.value) / 100;
         const rotate = Number(elements.rotate.value) / 180 * Math.PI;
@@ -770,7 +770,7 @@ class YooImagePickerElement extends HTMLElement {
         const saturation = Number(elements.saturation.value);
         const sepia = Number(elements.sepia.value);
         
-        offscreen_context.drawImage(image, 0, 0);
+        offscreen_context.drawImage(image, 0, 0, offscreen_canvas.width, offscreen_canvas.height);
 
         if (pixelate) {
             const pixels = offscreen_context.getImageData(0, 0, offscreen_canvas.width, offscreen_canvas.height).data;
@@ -781,7 +781,7 @@ class YooImagePickerElement extends HTMLElement {
                 for (let x = 0; x < offscreen_canvas.width; x += pixelate) {
                     const pixel = (x + y * offscreen_canvas.width) * 4;
                     offscreen_context.fillStyle = `rgba(${pixels[pixel]}, ${pixels[pixel + 1]}, ${pixels[pixel + 2]}, ${pixels[pixel + 3]}`;
-                    offscreen_context.fillRect(x, y, pixelate, pixelate);
+                    offscreen_context.fillRect(x - pixelate / 2, y - pixelate / 2, pixelate, pixelate);
                 }
             }
         }
@@ -797,7 +797,7 @@ class YooImagePickerElement extends HTMLElement {
 
         context.translate(-width / 2, -height / 2);
 
-        context.drawImage(offscreen_canvas, 0, 0, offscreen_canvas.width, offscreen_canvas.height, x, y, offscreen_canvas.width * ratio, offscreen_canvas.height * ratio);
+        context.drawImage(offscreen_canvas, 0, 0, offscreen_canvas.width, offscreen_canvas.height, x, y, offscreen_canvas.width, offscreen_canvas.height);
 
         context.restore();
 
