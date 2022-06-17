@@ -48,36 +48,28 @@ class YooImagePickerElement extends HTMLElement {
             canPaste: false
         };
 
-        this._wrappers = {
-            zoom: null,
-            rotate: null,
-            pixelate: null,
-            blur: null,
-            brightness: null,
-            contrast: null,
-            grayscale: null,
-            hue: null,
-            invert: null,
-            opacity: null,
-            saturation: null,
-            sepia: null
-        };
+        this.modifiers = [
+            "zoom",
+            "rotate",
+            "pixelate",
+            "blur",
+            "brightness",
+            "contrast",
+            "grayscale",
+            "hue",
+            "invert",
+            "opacity",
+            "saturation",
+            "sepia"
+        ]
 
-        this._elements = {
-            zoom: null,
-            rotate: null,
-            pixelate: null,
-            blur: null,
-            brightness: null,
-            contrast: null,
-            grayscale: null,
-            hue: null,
-            invert: null,
-            opacity: null,
-            saturation: null,
-            sepia: null,
-            reset: null
-        };
+        this._wrappers = {};
+        this._elements = {};
+
+        this.modifiers.map(modifier => {
+            this._wrappers[modifier] = null;
+            this._elements[modifier] = null;
+        });
 
         this.image = null;
     }
@@ -156,65 +148,230 @@ class YooImagePickerElement extends HTMLElement {
             this.import(url).then(() => URL.revokeObjectURL(url));
         });
         
-        {
-            const style = document.createElement("style");
-            style.textContent = "yoo-image-picker { display: inline-block; background: var(--yoo-image-picker-background, #343434); max-width: 100%; margin: 20px; padding: 15px; border-radius: 20px; }";
-            document.head.append(style);
-        }
+        const style = document.createElement("style");
+        style.textContent = "yoo-image-picker { display: inline-block; background: var(--yoo-image-picker-background, #343434); max-width: calc(100% - 70px); margin: 20px; padding: 15px; border-radius: 20px; }";
+        document.head.append(style);
 
         const shadow = this.attachShadow({ mode: "open" });
+        shadow.innerHTML = `<style>
+* {
+    color: var(--yoo-image-picker-foreground, #cbcbcb);
+    font-family: var(--yoo-image-picker-font, Arial);
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+    outline: none;
+}
 
-        const style = document.createElement("style");
-        style.textContent = "* { color: var(--yoo-image-picker-foreground, #cbcbcb); font-family: var(--yoo-image-picker-font, Arial); text-align: center; user-select: none; } input[type=range], small { display: inline; margin: 5px; } button, input { cursor: pointer; } button { background: var(--yoo-image-picker-background, #343434); margin: 10px; margin-left: 50%; padding: 10px; border: 2px solid var(--yoo-image-picker-foreground, #cbcbcb); border-radius: 10px; transform: translateX(-50%); } a { text-decoration: none } a:hover { text-decoration: underline; } small { display: block; } #canvas { display: block; max-width: 100%; height: auto; margin-left: 50%; border-radius: 10px; border: 4px dashed transparent; box-shadow: rgba(0, 0, 0, .35) 0 5px 15px; transition: border .3s ease; cursor: pointer; transform: translateX(-50%); } #canvas.highlighted { border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb); } #logo { width: 16px; vertical-align: bottom; } .wrapper { display: none; } .wrapper.active { display: block; } ";
-        shadow.append(style);
+small {
+    margin: 5px;
+}
 
-        {
-            const message = document.createElement("small");
-            message.textContent = "Upload your image here.";
-            shadow.append(message);
-        }
+button {
+    cursor: pointer;
+}
 
-        const canvas = document.createElement("canvas");
-        canvas.id = "canvas";
-        canvas.title = "Click to upload an image, drag and drop, or paste.";
-        canvas.ariaLabel = "Click to upload an image, drag and drop, or paste.";
+button {
+    background: var(--yoo-image-picker-background, #343434);
+    margin: 10px;
+    margin-left: 50%;
+    padding: 10px;
+    border: 2px solid var(--yoo-image-picker-foreground, #cbcbcb);
+    border-radius: 10px;
+    transform: translateX(-50%);
+}
+
+input[type=range] {
+    width: 100%;
+    margin: 7.5px 0;
+    background-color: transparent;
+    -webkit-appearance: none;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    background: var(--yoo-image-picker-slider-track, #444);
+    border: 0;
+    border-radius: 25px;
+    width: 100%;
+    height: 15px;
+    cursor: pointer;
+    transition: background .3s ease-in-out;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    margin-top: -5px;
+    width: 25px;
+    height: 25px;
+    background: var(--yoo-image-picker-slider-thumb, tomato);
+    border: 0;
+    border-radius: 50px;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: var(--yoo-image-picker-slider-track-focus, #5e5e5e);
+}
+
+input[type=range]::-moz-range-track {
+    background: var(--yoo-image-picker-slider-track, #444);
+    border: 0;
+    border-radius: 25px;
+    width: 100%;
+    height: 15px;
+    cursor: pointer;
+    transition: background .3s ease-in-out;
+}
+
+input[type=range]::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: var(--yoo-image-picker-slider-thumb, tomato);
+    border: 0;
+    border-radius: 50px;
+    cursor: pointer;
+}
+
+input[type=range]::-ms-track {
+    background: transparent;
+    border-color: transparent;
+    border-width: 5px 0;
+    color: transparent;
+    width: 100%;
+    height: 15px;
+    cursor: pointer;
+}
+
+input[type=range]::-ms-fill-lower, input[type=range]::-ms-fill-upper {
+    background: var(--yoo-image-picker-slider-track, #444);
+    border: 0;
+    border-radius: 50px;
+    transition: background .3s ease-in-out;
+}
+
+input[type=range]::-ms-thumb {
+    width: 25px;
+    height: 25px;
+    background: var(--yoo-image-picker-slider-thumb, tomato);
+    border: 0;
+    border-radius: 50px;
+    cursor: pointer;
+    margin-top: 0;
+}
+
+input[type=range]:focus::-ms-fill-lower, input[type=range]:focus::-ms-fill-upper {
+    background: var(--yoo-image-picker-slider-track-focus, #5e5e5e);
+}
+
+a {
+    text-decoration: none
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+small {
+    display: block;
+}
+
+#canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-left: 50%;
+    border-radius: 10px;
+    border: 4px dashed transparent;
+    box-shadow: rgba(0, 0, 0, .35) 0 5px 15px;
+    transition: border .3s ease-in-out;
+    cursor: pointer;
+    transform: translateX(-50%);
+}
+
+#canvas.highlighted {
+    border: 4px dashed var(--yoo-image-picker-foreground, #cbcbcb);
+}
+
+#logo {
+    vertical-align: bottom;
+}
+
+.wrapper {
+    display: none;
+    word-wrap: break-word;
+}
+
+.wrapper.active {
+    display: block;
+}
+</style>
+
+<small>Upload your image here.</small>
+
+<canvas id="canvas" title="Click to upload an image, drag and drop, or paste." aria-label="Click to upload an image, drag and drop, or paste."></canvas>
+
+<canvas id="offscreen" hidden="true"></canvas>
+
+<button id="reset" class="wrapper active" type="button" title="Reset modifiers" aria-label="Reset modifiers">Reset</button>
+
+<p id="zoom-wrapper" class="wrapper active">
+    Zoom <input id="zoom-input" type="range" min="50" value="100" max="300" title="Zoom" aria-label="Zoom">
+</p>
+
+<p id="rotate-wrapper" class="wrapper active">
+    Rotate <input id="rotate-input" type="range" min="0" value="0" max="180" title="Rotate" aria-label="Rotate">
+</p>
+
+<p id="pixelate-wrapper" class="wrapper active">
+    Pixelate <input id="pixelate-input" type="range" min="0" value="0" max="100" title="Pixelate" aria-label="Pixelate">
+</p>
+
+<p id="blur-wrapper" class="wrapper active">
+    Blur <input id="blur-input" type="range" min="0" value="0" max="100" title="Blur" aria-label="Blur">
+</p>
+
+<p id="brightness-wrapper" class="wrapper active">
+    Brightness <input id="brightness-input" type="range" min="0" value="100" max="200" title="Brightness" aria-label="Brightness">
+</p>
+
+<p id="contrast-wrapper" class="wrapper active">
+    Contrast <input id="contrast-input" type="range" min="0" value="100" max="200" title="Contrast" aria-label="Contrast">
+</p>
+
+<p id="grayscale-wrapper" class="wrapper active">
+    Grayscale <input id="grayscale-input" type="range" min="0" value="0" max="100" title="Grayscale" aria-label="Grayscale">
+</p>
+
+<p id="hue-wrapper" class="wrapper active">
+    Hue <input id="hue-input" type="range" min="0" value="0" max="360" title="Hue" aria-label="Hue">
+</p>
+
+<p id="invert-wrapper" class="wrapper active">
+    Invert <input id="invert-input" type="range" min="0" value="0" max="100" title="Invert" aria-label="Invert">
+</p>
+
+<p id="opacity-wrapper" class="wrapper active">
+    Opacity <input id="opacity-input" type="range" min="0" value="100" max="100" title="Opacity" aria-label="Opacity">
+</p>
+
+<p id="saturation-wrapper" class="wrapper active">
+    Saturation <input id="saturation-input" type="range" min="0" value="100" max="200" title="Saturation" aria-label="Saturation">
+</p>
+
+<p id="sepia-wrapper" class="wrapper active">
+    Sepia <input id="sepia-input" type="range" min="0" value="0" max="100" title="Sepia" aria-label="Sepia">
+</p>
+
+<small>
+    <img id="logo" src="https://www.data.yoo-babobo.com/content/images/logos/yoo-babobo-image.webp" alt="Yoo-Babobo Image" width="16" height="16" loading="lazy"> <a href="https://www.image.yoo-babobo.com/editor" target="_blank" title="Open Yoo-Babobo Image for a more extensive image editor." aria-label="Open Yoo-Babobo Image for a more extensive image editor.">Yoo-Babobo Image</a>
+</small>`;
+        
+        const canvas = shadow.getElementById("canvas");
         this.canvas = canvas;
-        shadow.append(canvas);
+
+        this.offscreen_canvas = shadow.getElementById("offscreen");
         
-        {
-            const canvas = document.createElement("canvas");
-            canvas.hidden = true;
-            this.offscreen_canvas = canvas;
-            
-            shadow.append(canvas);
-        }
-
-        const click = () => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "image/*";
-            input.hidden = true;
-            
-            shadow.append(input);
-
-            input.addEventListener("input", () => {
-                const file = input.files[0];
-                const type = file.type.split("/")[0];
-
-                if (type !== "image") return this._config.error();
-
-                const url = URL.createObjectURL(file);
-
-                this.import(url).then(() => URL.revokeObjectURL(url));
-
-                input.remove();
-            });
-
-            input.click();
-        };
-        
-        canvas.addEventListener("mousedown", click);
-        canvas.addEventListener("touchdown", click);
+        canvas.addEventListener("mousedown", () => this.pick());
 
         this.context = canvas.getContext("2d");
         this.offscreen_context = this.offscreen_canvas.getContext("2d");
@@ -224,300 +381,19 @@ class YooImagePickerElement extends HTMLElement {
 
         const render = () => this.render();
 
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.zoom = wrapper;
-            shadow.append(wrapper);
+        this.modifiers.map(modifier => {
+            wrappers[modifier] = shadow.getElementById(modifier + "-wrapper");
 
-            const span = document.createElement("span");
-            span.textContent = "Zoom ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 50;
-            input.value = 100;
-            input.max = 300;
-            input.title = "Zoom";
-            input.ariaLabel = "Zoom";
-            elements.zoom = input;
-
-            wrapper.append(span, input);
+            const input = shadow.getElementById(modifier + "-input");
+            elements[modifier] = input;
 
             input.addEventListener("input", render);
-        }
+        });
 
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.rotate = wrapper;
-            shadow.append(wrapper);
+        const button = shadow.getElementById("reset");
+        elements.reset = button;
 
-            const span = document.createElement("span");
-            span.textContent = "Rotate ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 180;
-            input.title = "Rotate";
-            input.ariaLabel = "Rotate";
-            elements.rotate = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.pixelate = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Pixelate ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 180;
-            input.title = "Pixelate";
-            input.ariaLabel = "Pixelate";
-            elements.pixelate = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.blur = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Blur ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 100;
-            input.title = "Blur";
-            input.ariaLabel = "Blur";
-            elements.blur = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.brightness = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Brightness ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 100;
-            input.max = 200;
-            input.title = "Brightness";
-            input.ariaLabel = "Brightness";
-            elements.brightness = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.contrast = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Contrast ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 100;
-            input.max = 200;
-            input.title = "Contrast";
-            input.ariaLabel = "Contrast";
-            elements.contrast = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.grayscale = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Grayscale ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 100;
-            input.title = "Grayscale";
-            input.ariaLabel = "Grayscale";
-            elements.grayscale = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.hue = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Hue ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 360;
-            input.title = "Hue";
-            input.ariaLabel = "Hue";
-            elements.hue = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.invert = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Invert ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 100;
-            input.title = "Invert";
-            input.ariaLabel = "Invert";
-            elements.invert = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.opacity = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Opacity ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 100;
-            input.max = 100;
-            input.title = "Opacity";
-            input.ariaLabel = "Opacity";
-            elements.opacity = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.saturation = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Saturation ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 100;
-            input.max = 200;
-            input.title = "Saturation";
-            input.ariaLabel = "Saturation";
-            elements.saturation = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const wrapper = document.createElement("p");
-            wrapper.classList.add("wrapper");
-            wrappers.sepia = wrapper;
-            shadow.append(wrapper);
-
-            const span = document.createElement("span");
-            span.textContent = "Sepia ";
-
-            const input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.value = 0;
-            input.max = 100;
-            input.title = "Sepia";
-            input.ariaLabel = "Sepia";
-            elements.sepia = input;
-
-            wrapper.append(span, input);
-
-            input.addEventListener("input", render);
-        }
-
-        {
-            const button = document.createElement("button");
-            button.classList.add("wrapper");
-            button.type = "button";
-            button.title = "Reset modifiers";
-            button.ariaLabel = "Reset modifiers";
-            button.textContent = "Reset";
-            elements.reset = button;
-            shadow.append(button);
-
-            button.addEventListener("click", () => this.reset(innerWidth > 450));
-        }
-
-        {
-            const message = document.createElement("small");
-            message.innerHTML = "<img id=\"logo\" src=\"https://www.data.yoo-babobo.com/content/images/logos/yoo-babobo-image.webp\" alt=\"Yoo-Babobo Image\" /> <a href=\"https://www.image.yoo-babobo.com/editor\" target=\"_blank\" title=\"Open Yoo-Babobo Image for a more extensive image editor.\" aria-label=\"Open Yoo-Babobo Image for a more extensive image editor.\">Yoo-Babobo Image</a>";
-            shadow.append(message);
-        }
+        button.addEventListener("click", () => this.reset(innerWidth > 450));
 
         this.config();
     }
@@ -602,6 +478,30 @@ class YooImagePickerElement extends HTMLElement {
         return this;
     }
 
+    pick() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.hidden = true;
+        
+        this.shadowRoot.append(input);
+
+        input.addEventListener("input", () => {
+            const file = input.files[0];
+            const type = file.type.split("/")[0];
+
+            if (type !== "image") return this._config.error();
+
+            const url = URL.createObjectURL(file);
+
+            this.import(url).then(() => URL.revokeObjectURL(url));
+
+            input.remove();
+        });
+
+        input.click();
+    }
+
     async import(url) {
         if (!url) return;
 
@@ -681,37 +581,41 @@ class YooImagePickerElement extends HTMLElement {
             return this;
         }
 
-        const animate = async (element, finish) => {
+        const animate = (element, finish) => {
             if (!(element instanceof HTMLElement)) return;
 
             const start = element.value;
             const offset = Math.max(start, finish) - Math.min(start, finish);
             const step = offset / time;
+            
+            // TODO: add fancy ease-in-out timimg to the animation
+            const timimg = (ms) => .5*(Math.sin((k - .5)*Math.PI) + 1);
+            
+            let first = null;
 
-            await new Promise(resolve => {
-                const loop = () => {
-                    let value = Number(element.value);
-                    const offset = Math.max(value, finish) - Math.min(value, finish);
+            const loop = (time) => {
+                if (!first) first = time;
+                
+                let value = Number(element.value);
+                const offset = Math.max(value, finish) - Math.min(value, finish);
 
-                    if (value > finish) {
-                        value -= step;
-                        if (step > offset) value = finish;
-                        else value -= step;
-                    } else if (value < finish) {
-                        if (step > offset) value = finish;
-                        else value += step;
-                    }
+                if (value > finish) {
+                    value -= step;
+                    if (step > offset) value = finish;
+                    else value -= step;
+                } else if (value < finish) {
+                    if (step > offset) value = finish;
+                    else value += step;
+                }
 
-                    element.value = value;
+                element.value = value;
 
-                    this.render();
+                this.render();
 
-                    if (value !== finish) requestAnimationFrame(() => loop());
-                    else resolve();
-                };
+                if (value !== finish) requestAnimationFrame((time) => loop(time));
+            };
 
-                requestAnimationFrame(() => loop());
-            });
+            requestAnimationFrame((time) => loop(time));
         };
 
         animate(elements.zoom, 100);
