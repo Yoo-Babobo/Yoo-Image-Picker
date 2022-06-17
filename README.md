@@ -78,8 +78,11 @@ You can easily customize the theme of the element by setting certain CSS variabl
 
 ```css
 :root {
+    --yoo-image-picker-font: Arial;
     --yoo-image-picker-background: #343434;
     --yoo-image-picker-foreground: #cbcbcb;
-    --yoo-image-picker-font: Arial;
+    --yoo-image-picker-slider-track: #444;
+    --yoo-image-picker-slider-track-focus: #5e5e5e;
+    --yoo-image-picker-slider-thumb: tomato;
 }
 ```
